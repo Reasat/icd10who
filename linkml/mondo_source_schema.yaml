@@ -1,0 +1,122 @@
+id: https://w3id.org/monarch-initiative/mondo-source-schema
+name: mondo_source_schema
+description: LinkML schema for ICD-10 WHO source for Mondo ingest.
+version: 0.1.0
+
+prefixes:
+  linkml:    https://w3id.org/linkml/
+  mondo_src: https://w3id.org/monarch-initiative/mondo-source-schema/
+  rdfs:      http://www.w3.org/2000/01/rdf-schema#
+  skos:      http://www.w3.org/2004/02/skos/core#
+  dcterms:   http://purl.org/dc/terms/
+  obo:       http://purl.obolibrary.org/obo/
+  oboInOwl:  http://www.geneontology.org/formats/oboInOwl#
+  owl:       http://www.w3.org/2002/07/owl#
+  ICD10WHO:  https://icd.who.int/browse10/2019/en#/
+
+imports:
+  - linkml:types
+
+default_prefix: mondo_src
+default_range: string
+
+
+classes:
+
+  OntologyDocument:
+    tree_root: true
+    class_uri: owl:Ontology
+    slots:
+      - title
+      - version
+      - terms
+
+  OntologyTerm:
+    class_uri: owl:Class
+    slots:
+      - id
+      - label
+      - definition
+      - exact_synonyms
+      - related_synonyms
+      - narrow_synonyms
+      - broad_synonyms
+      - parents
+      - is_root
+      - deprecated
+
+
+slots:
+
+  title:
+    slot_uri: rdfs:label
+    required: true
+
+  version:
+    slot_uri: owl:versionInfo
+    required: true
+
+  terms:
+    range: OntologyTerm
+    multivalued: true
+    inlined_as_list: true
+    required: true
+
+  id:
+    identifier: true
+    slot_uri: dcterms:identifier
+    range: uriorcurie
+    required: true
+
+  label:
+    slot_uri: rdfs:label
+    required: true
+    annotations:
+      owl: AnnotationAssertion
+
+  definition:
+    slot_uri: obo:IAO_0000115
+    annotations:
+      owl: AnnotationAssertion
+
+  exact_synonyms:
+    slot_uri: oboInOwl:hasExactSynonym
+    multivalued: true
+    annotations:
+      owl: AnnotationAssertion
+
+  related_synonyms:
+    slot_uri: oboInOwl:hasRelatedSynonym
+    multivalued: true
+    annotations:
+      owl: AnnotationAssertion
+
+  narrow_synonyms:
+    slot_uri: oboInOwl:hasNarrowSynonym
+    multivalued: true
+    annotations:
+      owl: AnnotationAssertion
+
+  broad_synonyms:
+    slot_uri: oboInOwl:hasBroadSynonym
+    multivalued: true
+    annotations:
+      owl: AnnotationAssertion
+
+  parents:
+    slot_uri: rdfs:subClassOf
+    range: OntologyTerm
+    multivalued: true
+    annotations:
+      owl: SubClassOf
+
+  is_root:
+    range: boolean
+    ifabsent: "false"
+
+  deprecated:
+    slot_uri: owl:deprecated
+    range: boolean
+    ifabsent: "false"
+    annotations:
+      owl: AnnotationAssertion

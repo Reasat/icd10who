@@ -1,0 +1,19 @@
+# Credentials — never commit
+.env
+env/.env
+
+# Build artefacts — uploaded as GitHub Release assets, not committed
+icd10who.owl
+icd10who_from_linkml.owl
+icd10who.linkml.yaml
+
+# Build intermediates
+tmp/
+
+# Python
+*.pyc
+__pycache__/
+*.egg-info/
+
+# Virtual env — uv.lock IS committed (reproducible CI builds)
+.venv/
