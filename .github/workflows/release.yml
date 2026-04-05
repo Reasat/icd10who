@@ -2,18 +2,18 @@ name: Build and release
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "0 0 * * 1"   # weekly, Monday 00:00 UTC
-  push:
-    branches: [main]
-    paths:
-      - "Makefile"
-      - "config/**"
-      - "sparql/**"
-      - "linkml/**"
-      - "scripts/**"
-      - "pyproject.toml"
-      - "uv.lock"
+  # schedule:
+  #   - cron: "0 0 * * 1"   # weekly, Monday 00:00 UTC
+  # push:
+  #   branches: [main]
+  #   paths:
+  #     - "Makefile"
+  #     - "config/**"
+  #     - "sparql/**"
+  #     - "linkml/**"
+  #     - "scripts/**"
+  #     - "pyproject.toml"
+  #     - "uv.lock"
 
 jobs:
   build-and-release:
