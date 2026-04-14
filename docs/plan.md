@@ -15,8 +15,8 @@
 
 ```
 make acquire       → tmp/icd10who_raw.ttl   (WHO API BFS traversal)
-make build         → icd10who.owl            (ROBOT: normalize + exact-syn + filter)
-make build-release → icd10who.linkml.yml     (LinkML YAML)
+make build         → icd10who.owl            (ROBOT: normalize + xref fix + exact-syn + filter)
+make build-release → icd10who.linkml.yaml    (LinkML YAML)
                    → icd10who_from_linkml.owl (derived OWL)
 ```
 
@@ -36,7 +36,7 @@ ICD10WHO:A00.0 a owl:Class ;
 |---|---|---|
 | `rdfs:label` | `label` | Primary term name |
 | `rdfs:subClassOf` | `parents` | Direct hierarchy; top-level terms point to `owl:Thing` |
-| (generated) | `exact_synonyms` | SPARQL update generates `oboInOwl:hasExactSynonym` from label |
+| (generated) | `exact_synonyms` | SPARQL generates `oboInOwl:hasExactSynonym` from label; YAML uses inlined `Synonym` with `synonym_type: generated_from_label` |
 | `skos:notation` | — | Code retained in OWL; not mapped to YAML slot |
 | `rdfs:seeAlso` | — | WHO browse URL; retained in OWL via properties allowlist |
 
@@ -48,7 +48,7 @@ ICD10WHO:A00.0 a owl:Class ;
 
 ## Source characteristics
 
-- ~4,894 terms (2019 release)
+- 12,597 terms for the ICD-10 WHO 2019 release (full API traversal; see `docs/pipeline_incidents.md` for the old 4,894-term truncation issue).
 - No definitions (`obo:IAO_0000115`)
 - No synonyms in source (generated from labels)
 - No deprecated terms (`owl:deprecated`)
@@ -57,9 +57,10 @@ ICD10WHO:A00.0 a owl:Class ;
 ## ROBOT preprocessing steps
 
 1. `merge` + `odk:normalize` — standardise OWL axiom structure
-2. `query --update sparql/exact_syn_from_label.ru` — generate exact synonyms
-3. `remove -T config/properties.txt --select complement --select properties` — strip non-allowlisted annotation properties
-4. `annotate` — add stable ontology IRI and dated version IRI
+2. `query --update sparql/fix_xref_prefixes.ru` — normalise common `oboInOwl:hasDbXref` prefixes (no-op if absent)
+3. `query --update sparql/exact_syn_from_label.ru` — generate exact synonyms
+4. `remove -T config/properties.txt --select complement --select properties` — strip non-allowlisted annotation properties
+5. `annotate` — add stable ontology IRI and dated version IRI
 
 ## Acquisition details
 
@@ -76,5 +77,5 @@ cp env/.env.example env/.env
 
 ## CI
 
-- **build.yml** — runs on PR touching source files; requires `CLIENT_ID` and `CLIENT_SECRET` as GitHub secrets
-- **release.yml** — runs on push to `main` and weekly (Monday 00:00 UTC); creates dated release tag and uploads artefacts
+- **build.yml** — runs on PR touching source files; requires `CLIENT_ID` and `CLIENT_SECRET` as GitHub secrets; restores `tmp/cache/` for API traversal; runs `uv sync`, `make dependencies`, `make build-release`.
+- **release.yml** — `workflow_dispatch` (and optional schedule/push per workflow file); creates dated release tag and uploads artefacts.

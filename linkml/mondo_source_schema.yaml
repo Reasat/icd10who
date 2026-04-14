@@ -1,7 +1,6 @@
 id: https://w3id.org/monarch-initiative/mondo-source-schema
 name: mondo_source_schema
-description: LinkML schema for ICD-10 WHO source for Mondo ingest.
-version: 0.1.0
+version: 0.4.0
 
 prefixes:
   linkml:    https://w3id.org/linkml/
@@ -12,6 +11,7 @@ prefixes:
   obo:       http://purl.obolibrary.org/obo/
   oboInOwl:  http://www.geneontology.org/formats/oboInOwl#
   owl:       http://www.w3.org/2002/07/owl#
+  MONDO:     http://purl.obolibrary.org/obo/mondo#
   ICD10WHO:  https://icd.who.int/browse10/2019/en#/
 
 imports:
@@ -19,6 +19,23 @@ imports:
 
 default_prefix: mondo_src
 default_range: string
+
+
+enums:
+
+  SynonymTypeEnum:
+    description: Types of synonyms used in Mondo source ingests.
+    permissible_values:
+      omim_included:
+        meaning: MONDO:omim_included
+      generated_from_label:
+        meaning: MONDO:GENERATED_FROM_LABEL
+      generated:
+        meaning: MONDO:GENERATED
+      omim_formerly:
+        meaning: MONDO:omim_formerly
+      abbreviation:
+        meaning: MONDO:ABBREVIATION
 
 
 classes:
@@ -31,6 +48,12 @@ classes:
       - version
       - terms
 
+  Synonym:
+    description: A synonym value with an optional type annotation.
+    slots:
+      - synonym_text
+      - synonym_type
+
   OntologyTerm:
     class_uri: owl:Class
     slots:
@@ -41,9 +64,34 @@ classes:
       - related_synonyms
       - narrow_synonyms
       - broad_synonyms
+      - skos_exact_match
       - parents
-      - is_root
       - deprecated
+    slot_usage:
+      exact_synonyms:
+        annotations:
+          owl.template: |-
+            {% for s in exact_synonyms %}
+            AnnotationAssertion({% if s.synonym_type %}Annotation(oboInOwl:hasSynonymType {{s.synonym_type.meaning}}) {% endif %}oboInOwl:hasExactSynonym {{id}} "{{s.synonym_text|replace('"', '\\"')}}")
+            {% endfor %}
+      related_synonyms:
+        annotations:
+          owl.template: |-
+            {% for s in related_synonyms %}
+            AnnotationAssertion({% if s.synonym_type %}Annotation(oboInOwl:hasSynonymType {{s.synonym_type.meaning}}) {% endif %}oboInOwl:hasRelatedSynonym {{id}} "{{s.synonym_text|replace('"', '\\"')}}")
+            {% endfor %}
+      narrow_synonyms:
+        annotations:
+          owl.template: |-
+            {% for s in narrow_synonyms %}
+            AnnotationAssertion({% if s.synonym_type %}Annotation(oboInOwl:hasSynonymType {{s.synonym_type.meaning}}) {% endif %}oboInOwl:hasNarrowSynonym {{id}} "{{s.synonym_text|replace('"', '\\"')}}")
+            {% endfor %}
+      broad_synonyms:
+        annotations:
+          owl.template: |-
+            {% for s in broad_synonyms %}
+            AnnotationAssertion({% if s.synonym_type %}Annotation(oboInOwl:hasSynonymType {{s.synonym_type.meaning}}) {% endif %}oboInOwl:hasBroadSynonym {{id}} "{{s.synonym_text|replace('"', '\\"')}}")
+            {% endfor %}
 
 
 slots:
@@ -61,6 +109,12 @@ slots:
     multivalued: true
     inlined_as_list: true
     required: true
+
+  synonym_text:
+    required: true
+
+  synonym_type:
+    range: SynonymTypeEnum
 
   id:
     identifier: true
@@ -82,24 +136,31 @@ slots:
   exact_synonyms:
     slot_uri: oboInOwl:hasExactSynonym
     multivalued: true
-    annotations:
-      owl: AnnotationAssertion
+    range: Synonym
+    inlined_as_list: true
 
   related_synonyms:
     slot_uri: oboInOwl:hasRelatedSynonym
     multivalued: true
-    annotations:
-      owl: AnnotationAssertion
+    range: Synonym
+    inlined_as_list: true
 
   narrow_synonyms:
     slot_uri: oboInOwl:hasNarrowSynonym
     multivalued: true
-    annotations:
-      owl: AnnotationAssertion
+    range: Synonym
+    inlined_as_list: true
 
   broad_synonyms:
     slot_uri: oboInOwl:hasBroadSynonym
     multivalued: true
+    range: Synonym
+    inlined_as_list: true
+
+  skos_exact_match:
+    slot_uri: skos:exactMatch
+    multivalued: true
+    range: uriorcurie
     annotations:
       owl: AnnotationAssertion
 
@@ -110,13 +171,8 @@ slots:
     annotations:
       owl: SubClassOf
 
-  is_root:
-    range: boolean
-    ifabsent: "false"
-
   deprecated:
     slot_uri: owl:deprecated
     range: boolean
-    ifabsent: "false"
     annotations:
       owl: AnnotationAssertion

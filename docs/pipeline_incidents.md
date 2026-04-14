@@ -1,4 +1,4 @@
-# ICD10WHO Ingest — Build Report
+# ICD10WHO Ingest — Pipeline incidents
 
 ## Unanticipated events and resolutions
 
@@ -24,7 +24,7 @@
 
 **Event:** The WHO ICD-10 API returns only labels (`title`), parent URIs, and child URIs. There are no definition fields or synonym fields.
 
-**Resolution:** Definitions are left absent (the `definition` slot remains empty for all terms). Exact synonyms are generated from labels via the SPARQL update `sparql/exact_syn_from_label.ru`, following the same Mondo convention used by ICD10CM.
+**Resolution:** Definitions are left absent (the `definition` slot remains empty for all terms). Exact synonyms are generated from labels via the SPARQL update `sparql/exact_syn_from_label.ru`, following the same Mondo convention used by ICD10CM. YAML emits synonyms as inlined `Synonym` objects with `synonym_type: generated_from_label` per `mondo_source_schema` v0.4.0.
 
 ### 5. `linkml-owl` produces empty OWL without `annotations: owl:` on slots
 
@@ -43,3 +43,15 @@
 **Event:** The old `monarch-initiative/icd10who` repo committed a TTL with 4,894 terms. Our traversal produced 12,597.
 
 **Resolution:** The old tool used Python recursive DFS and hit the 1,000-frame recursion limit, silently truncating the traversal. Our BFS-based `acquire.py` correctly traverses the entire hierarchy without recursion limits. 12,597 is the correct full term count for the ICD-10 WHO 2019 release.
+
+### 8. `linkml-runtime` inlining bug with commas in synonym text
+
+**Event:** Upstream `linkml_runtime._normalize_inlined` can raise `ValueError` when synonym text contains commas in `inlined_as_list` slots.
+
+**Resolution:** CI and local release builds run `make dependencies` after `uv sync` to install `linkml-owl==0.5.0` and `linkml` / `linkml-runtime` from the `linkml/linkml` monorepo `main` branch until the upstream bug is fixed. `transform.py` uses a custom YAML dumper that quotes strings containing `,`, `:`, `{`, or `}` to reduce parser ambiguity.
+
+### 9. Schema alignment with mondo-source-ingest v0.4.0
+
+**Event:** The schema previously exposed `is_root` in YAML and used plain-string synonyms; the mondo-source-ingest skill requires v0.4.0 with `Synonym` inlined objects, `owl.template` for synonym axioms, no `is_root` in output, and no `ifabsent` on `deprecated`.
+
+**Resolution:** Updated `linkml/mondo_source_schema.yaml` to v0.4.0, adjusted `transform.py`, added `scripts/verify.py`, and included `sparql/fix_xref_prefixes.ru` in the ROBOT chain (no-op when the WHO-derived graph has no `hasDbXref`).

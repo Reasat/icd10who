@@ -3,16 +3,16 @@
 Serialize ICD-10 WHO component OWL → schema-conformant YAML.
 
 Reads rdfs:label, oboInOwl:hasExactSynonym (generated from label by SPARQL),
-rdfs:subClassOf, skos:notation, and owl:deprecated from the ROBOT-processed OWL.
+rdfs:subClassOf, and owl:deprecated from the ROBOT-processed OWL.
 
 Input:  icd10who.owl (after make build)
-Output: icd10who.linkml.yml  (conforms to linkml/mondo_source_schema.yaml)
+Output: icd10who.linkml.yaml (conforms to linkml/mondo_source_schema.yaml)
 
 Usage:
     python scripts/transform.py \\
         --input icd10who.owl \\
         --schema linkml/mondo_source_schema.yaml \\
-        --output icd10who.linkml.yml
+        --output icd10who.linkml.yaml
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ from pathlib import Path
 
 import yaml
 from rdflib import OWL, RDF, RDFS, Graph, Literal, URIRef
-from rdflib.namespace import Namespace, SKOS
+from rdflib.namespace import Namespace
 
 # ── Namespaces ─────────────────────────────────────────────────────────────────
 
@@ -31,8 +31,21 @@ OBOINOWL = Namespace("http://www.geneontology.org/formats/oboInOwl#")
 ICD10WHO_NS_PREFIX = "https://icd.who.int/browse10/"
 ICD10WHO_CURIE_PREFIX = "ICD10WHO:"
 
-# The exact namespace base written by acquire.py
-ICD10WHO_NS = Namespace("https://icd.who.int/browse10/2019/en#/")
+
+# ── YAML: quote strings that break plain YAML scalars ───────────────────────────
+
+
+class QuotingDumper(yaml.SafeDumper):
+    pass
+
+
+def _represent_str(dumper: yaml.Dumper, data: str) -> yaml.ScalarNode:
+    if any(c in data for c in ",:{}") or data.strip() != data:
+        return dumper.represent_scalar("tag:yaml.org,2002:str", data, style='"')
+    return dumper.represent_scalar("tag:yaml.org,2002:str", data)
+
+
+QuotingDumper.add_representer(str, _represent_str)
 
 
 # ── IRI helpers ────────────────────────────────────────────────────────────────
@@ -86,7 +99,11 @@ def extract_terms(g: Graph) -> list[dict]:
         dep_node = g.value(subj, OWL.deprecated)
         is_deprecated = dep_node is not None and str(dep_node).strip().lower() == "true"
 
-        exact_syns = _literal_values(g, subj, OBOINOWL.hasExactSynonym)
+        syn_texts = _literal_values(g, subj, OBOINOWL.hasExactSynonym)
+        exact_syns = [
+            {"synonym_text": t, "synonym_type": "generated_from_label"}
+            for t in syn_texts
+        ]
         parent_curies = _get_parents(g, subj)
         has_thing_parent = OWL.Thing in g.objects(subj, RDFS.subClassOf)
         is_root = has_thing_parent or len(parent_curies) == 0
@@ -96,9 +113,7 @@ def extract_terms(g: Graph) -> list[dict]:
             term["deprecated"] = True
         if exact_syns:
             term["exact_synonyms"] = exact_syns
-        if is_root:
-            term["is_root"] = True
-        else:
+        if not is_root:
             term["parents"] = parent_curies
 
         terms.append(term)
@@ -130,7 +145,14 @@ def transform(input_path: Path, output_path: Path) -> None:
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w", encoding="utf-8") as fh:
-        yaml.dump(doc, fh, allow_unicode=True, sort_keys=False, default_flow_style=False)
+        yaml.dump(
+            doc,
+            fh,
+            allow_unicode=True,
+            sort_keys=False,
+            default_flow_style=False,
+            Dumper=QuotingDumper,
+        )
     print(f"Written: {output_path}", file=sys.stderr)
 
 
