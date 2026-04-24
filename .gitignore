@@ -4,8 +4,7 @@ env/.env
 
 # Build artefacts — uploaded as GitHub Release assets, not committed
 icd10who.owl
-icd10who_from_linkml.owl
-icd10who.linkml.yaml
+icd10who.yaml
 
 # Build intermediates
 tmp/

@@ -18,9 +18,10 @@
 ### Artefacts
 | File | Description |
 |---|---|
-| `icd10who.linkml.yaml` | Primary LinkML YAML — 2.2 MB |
-| `icd10who.owl` | ROBOT-preprocessed OWL — 12 MB |
-| `icd10who_from_linkml.owl` | LinkML-derived OWL (Functional Syntax) — 4.1 MB |
+| `icd10who.yaml` | Primary LinkML YAML — ~2.2 MB |
+| `icd10who.owl` | Final LinkML-derived OWL (Functional Syntax) — ~4.1 MB |
+
+ROBOT-preprocessed OWL (`tmp/transformed-icd10who.owl`, ~12 MB) is a local/CI intermediate only, not a GitHub Release asset (mondo-source-ingest OWL-pipeline convention).
 
 ### Notes
 - Term count (12,597) is significantly higher than the previously committed TTL from

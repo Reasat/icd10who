@@ -5,14 +5,14 @@ Serialize ICD-10 WHO component OWL → schema-conformant YAML.
 Reads rdfs:label, oboInOwl:hasExactSynonym (generated from label by SPARQL),
 rdfs:subClassOf, and owl:deprecated from the ROBOT-processed OWL.
 
-Input:  icd10who.owl (after make build)
-Output: icd10who.linkml.yaml (conforms to linkml/mondo_source_schema.yaml)
+Input:  tmp/transformed-icd10who.owl (after make build)
+Output: icd10who.yaml (conforms to linkml/mondo_source_schema.yaml)
 
 Usage:
     python scripts/transform.py \\
-        --input icd10who.owl \\
+        --input tmp/transformed-icd10who.owl \\
         --schema linkml/mondo_source_schema.yaml \\
-        --output icd10who.linkml.yaml
+        --output icd10who.yaml
 """
 
 from __future__ import annotations

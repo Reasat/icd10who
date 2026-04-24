@@ -2,8 +2,8 @@
 #
 # Pipeline:
 #   make acquire        — fetch ICD-10 WHO from WHO API → tmp/icd10who_raw.ttl
-#   make build          — ROBOT preprocessing → icd10who.owl
-#   make build-release  — build + transform → validate → verify → LinkML OWL
+#   make build          — ROBOT preprocessing → tmp/transformed-icd10who.owl
+#   make build-release  — build + transform → validate → verify → icd10who.yaml + icd10who.owl
 #
 # Requires: ROBOT (≥ 1.9), obolibrary/odkfull Docker image for CI, uv for Python.
 # Auth: set CLIENT_ID and CLIENT_SECRET in env/.env (see env/.env.example).
@@ -19,11 +19,13 @@ CONFIG_DIR  := config
 SCRIPTS_DIR := scripts
 SPARQL_DIR  := sparql
 TMP_DIR     := tmp
-OUTPUT_OWL  := icd10who.owl
-OUTPUT_OWL_LINKML := icd10who_from_linkml.owl
+# ROBOT-processed intermediate (mondo-source-ingest: tmp/transformed-<source>.owl; not released)
+OUTPUT_OWL  := $(TMP_DIR)/transformed-icd10who.owl
+# Final LinkML-derived OWL at repo root (released with YAML)
+OUTPUT_OWL_LINKML := icd10who.owl
 MIRROR_OWL  := $(TMP_DIR)/mirror-icd10who.owl
 RAW_TTL     := $(TMP_DIR)/icd10who_raw.ttl
-YAML_OUT    := icd10who.linkml.yaml
+YAML_OUT    := icd10who.yaml
 SCHEMA      := linkml/mondo_source_schema.yaml
 ONTOLOGY_IRI := https://github.com/monarch-initiative/icd10who/releases/latest/download/icd10who.owl
 URIBASE     := http://purl.obolibrary.org/obo
@@ -86,11 +88,11 @@ build-release: build
 	$(UV_RUN) python $(SCRIPTS_DIR)/verify.py --yaml $(YAML_OUT)
 	$(UV_RUN) python -m linkml_owl.dumpers.owl_dumper \
 		--schema $(SCHEMA) -o $(OUTPUT_OWL_LINKML) $(YAML_OUT)
-	@echo "Build complete: $(YAML_OUT), $(OUTPUT_OWL) (ROBOT), $(OUTPUT_OWL_LINKML) (LinkML)"
+	@echo "Build complete: $(YAML_OUT), $(OUTPUT_OWL_LINKML) (release); $(OUTPUT_OWL) (ROBOT intermediate)"
 
 verify:
 	$(UV_RUN) python $(SCRIPTS_DIR)/verify.py --yaml $(YAML_OUT)
 
 clean:
-	rm -f $(OUTPUT_OWL) $(OUTPUT_OWL_LINKML) $(YAML_OUT)
+	rm -f $(OUTPUT_OWL_LINKML) $(YAML_OUT)
 	rm -rf $(TMP_DIR)

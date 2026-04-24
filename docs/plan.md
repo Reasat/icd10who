@@ -15,9 +15,9 @@
 
 ```
 make acquire       → tmp/icd10who_raw.ttl   (WHO API BFS traversal)
-make build         → icd10who.owl            (ROBOT: normalize + xref fix + exact-syn + filter)
-make build-release → icd10who.linkml.yaml    (LinkML YAML)
-                   → icd10who_from_linkml.owl (derived OWL)
+make build         → tmp/transformed-icd10who.owl (ROBOT: normalize + xref fix + exact-syn + filter)
+make build-release → icd10who.yaml            (LinkML YAML — release)
+                   → icd10who.owl             (LinkML-derived OWL — release; mondo-source-ingest convention)
 ```
 
 ## Source data structure (sample)

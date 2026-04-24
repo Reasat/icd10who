@@ -13,18 +13,17 @@ Preprocessed ICD-10 WHO source for Mondo ingest.
 
 ```bash
 make acquire       # fetch from WHO API → tmp/icd10who_raw.ttl  (~2.5 hrs, cached after first run)
-make build         # ROBOT preprocessing → icd10who.owl
-make build-release # LinkML YAML + validate + verify + derived OWL
-make verify        # re-run structural checks on icd10who.linkml.yaml (after build-release)
+make build         # ROBOT preprocessing → tmp/transformed-icd10who.owl
+make build-release # icd10who.yaml + validate + verify + icd10who.owl (LinkML-derived)
+make verify        # re-run structural checks on icd10who.yaml (after build-release)
 ```
 
 ## Outputs
 
 | File | Description |
 |---|---|
-| `icd10who.linkml.yaml` | Primary artefact for Mondo ingest |
-| `icd10who.owl` | ROBOT-preprocessed OWL |
-| `icd10who_from_linkml.owl` | LinkML-derived OWL |
+| `icd10who.yaml` | Primary artefact for Mondo ingest (mondo-source-ingest OWL-pipeline naming) |
+| `icd10who.owl` | Final LinkML-derived OWL (released; ROBOT intermediate is `tmp/transformed-icd10who.owl`) |
 
 ## Docs
 
