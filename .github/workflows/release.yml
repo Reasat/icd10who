@@ -4,16 +4,16 @@ on:
   workflow_dispatch:
   # schedule:
   #   - cron: "0 0 * * 1"   # weekly, Monday 00:00 UTC
-  # push:
-  #   branches: [main]
-  #   paths:
-  #     - "Makefile"
-  #     - "config/**"
-  #     - "sparql/**"
-  #     - "linkml/**"
-  #     - "scripts/**"
-  #     - "pyproject.toml"
-  #     - "uv.lock"
+  push:
+    branches: [main]
+    paths:
+      - "Makefile"
+      - "config/**"
+      - "sparql/**"
+      - "linkml/**"
+      - "scripts/**"
+      - "pyproject.toml"
+      - "uv.lock"
 
 jobs:
   build-and-release:
@@ -59,6 +59,8 @@ jobs:
           files: |
             icd10who.yaml
             icd10who.owl
+            icd10who.raw.ttl
+            icd10who.mirror.ttl
           generate_release_notes: true
           draft: false
         env:

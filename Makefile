@@ -3,7 +3,8 @@
 # Pipeline:
 #   make acquire        — fetch ICD-10 WHO from WHO API → tmp/icd10who_raw.ttl
 #   make build          — ROBOT preprocessing → tmp/transformed-icd10who.owl
-#   make build-release  — build + transform → validate → verify → icd10who.yaml + icd10who.owl
+#   make build-release  — build + transform → validate → verify → release assets:
+#                         icd10who.yaml + icd10who.owl + icd10who.raw.ttl + icd10who.mirror.ttl
 #
 # Requires: ROBOT (≥ 1.9), obolibrary/odkfull Docker image for CI, uv for Python.
 # Auth: set CLIENT_ID and CLIENT_SECRET in env/.env (see env/.env.example).
@@ -23,6 +24,9 @@ TMP_DIR     := tmp
 OUTPUT_OWL  := $(TMP_DIR)/transformed-icd10who.owl
 # Final LinkML-derived OWL at repo root (released with YAML)
 OUTPUT_OWL_LINKML := icd10who.owl
+# Release TTL assets at repo root (clear naming)
+RAW_TTL_RELEASE := icd10who.raw.ttl
+MIRROR_TTL_RELEASE := icd10who.mirror.ttl
 MIRROR_OWL  := $(TMP_DIR)/mirror-icd10who.owl
 RAW_TTL     := $(TMP_DIR)/icd10who_raw.ttl
 YAML_OUT    := icd10who.yaml
@@ -73,6 +77,15 @@ $(OUTPUT_OWL): $(MIRROR_OWL) \
 build: $(OUTPUT_OWL)
 	@echo "Build complete: $(OUTPUT_OWL)"
 
+# ── Release TTL assets (clear provenance naming) ───────────────────────────────
+$(RAW_TTL_RELEASE): $(RAW_TTL)
+	cp $(RAW_TTL) $@
+	@echo "Built $@"
+
+$(MIRROR_TTL_RELEASE): $(MIRROR_OWL)
+	$(ROBOT) convert -i $(MIRROR_OWL) -f ttl -o $@
+	@echo "Built $@"
+
 # Pin linkml-owl + main-branch linkml/linkml-runtime (comma-in-synonym workaround).
 dependencies:
 	$(UV) pip install linkml-owl==0.5.0 \
@@ -80,7 +93,7 @@ dependencies:
 		"linkml-runtime @ git+https://github.com/linkml/linkml.git@main#subdirectory=packages/linkml_runtime"
 
 # ── Release: build + LinkML transform + validate + verify + data2owl ───────────
-build-release: build
+build-release: build $(RAW_TTL_RELEASE) $(MIRROR_TTL_RELEASE)
 	$(UV_RUN) python $(SCRIPTS_DIR)/transform.py \
 		--input $(OUTPUT_OWL) --schema $(SCHEMA) --output $(YAML_OUT)
 	$(UV_RUN) python -m linkml.validator.cli \
@@ -88,11 +101,11 @@ build-release: build
 	$(UV_RUN) python $(SCRIPTS_DIR)/verify.py --yaml $(YAML_OUT)
 	$(UV_RUN) python -m linkml_owl.dumpers.owl_dumper \
 		--schema $(SCHEMA) -o $(OUTPUT_OWL_LINKML) $(YAML_OUT)
-	@echo "Build complete: $(YAML_OUT), $(OUTPUT_OWL_LINKML) (release); $(OUTPUT_OWL) (ROBOT intermediate)"
+	@echo "Build complete: $(YAML_OUT), $(OUTPUT_OWL_LINKML), $(RAW_TTL_RELEASE), $(MIRROR_TTL_RELEASE) (release); $(OUTPUT_OWL) (ROBOT intermediate)"
 
 verify:
 	$(UV_RUN) python $(SCRIPTS_DIR)/verify.py --yaml $(YAML_OUT)
 
 clean:
-	rm -f $(OUTPUT_OWL_LINKML) $(YAML_OUT)
+	rm -f $(OUTPUT_OWL_LINKML) $(YAML_OUT) $(RAW_TTL_RELEASE) $(MIRROR_TTL_RELEASE)
 	rm -rf $(TMP_DIR)
