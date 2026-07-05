@@ -5,6 +5,22 @@ env/.env
 # Build artefacts — uploaded as GitHub Release assets, not committed
 icd10who.owl
 icd10who.yaml
+icd10who.raw.ttl
+icd10who.mirror.ttl
+icd10who.mirror.owl
+icd10who.db
+icd10who.db.tmp
+icd10who-relation-graph.tsv
+icd10who-relation-graph.tsv.gz
+icd10who-min.owl
+icd10who-prefixes.yaml
+icd10who-properties.txt
+
+# Release reports, mappings, generated docs
+reports/
+mappings/
+docs/sources/
+docs/metrics/
 
 # Build intermediates
 tmp/

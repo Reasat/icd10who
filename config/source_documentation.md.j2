@@ -1,0 +1,13 @@
+# {{ id.upper() }} source
+
+**Source name:** {{ label|default(id) }}
+
+**Source description:** {{ description }}
+
+**Homepage:** {{ homepage|default("None") }}
+
+**Comments:** {{ comment|default("None") }}
+
+The preprocessing pipeline is implemented in this repository (`make build-release`).
+
+Release assets are documented in [docs/release-assets.md](release-assets.md).
