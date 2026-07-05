@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Preprocessed ICD-10 WHO source for Mondo ingest"
 requires-python = ">=3.10"
 dependencies = [
+    "jinja2>=3.0.0",
     "linkml>=1.10.0",
     "linkml-owl==0.5.0",
     "pydantic>=2.0.0",

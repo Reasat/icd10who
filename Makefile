@@ -3,8 +3,7 @@
 # Pipeline:
 #   make acquire        — fetch ICD-10 WHO from WHO API → tmp/icd10who_raw.ttl
 #   make build          — ROBOT preprocessing → tmp/transformed-icd10who.owl
-#   make build-release  — build + transform → validate → verify → release assets:
-#                         icd10who.yaml + icd10who.owl + icd10who.raw.ttl + icd10who.mirror.ttl
+#   make build-release  — build + LinkML + release assets (see docs/release-assets.md)
 #
 # Requires: ROBOT (≥ 1.9), obolibrary/odkfull Docker image for CI, uv for Python.
 # Auth: set CLIENT_ID and CLIENT_SECRET in env/.env (see env/.env.example).
@@ -17,16 +16,23 @@ PYTHON      ?= python3
 UV          ?= uv
 UV_RUN      ?= uv run --no-sync
 CONFIG_DIR  := config
+METADATA_DIR := metadata
 SCRIPTS_DIR := scripts
 SPARQL_DIR  := sparql
 TMP_DIR     := tmp
+REPORTS_DIR := reports
+MAPPINGS_DIR := mappings
+DOCS_SOURCES_DIR := docs/sources
+DOCS_METRICS_DIR := docs/metrics
 # ROBOT-processed intermediate (mondo-source-ingest: tmp/transformed-<source>.owl; not released)
 OUTPUT_OWL  := $(TMP_DIR)/transformed-icd10who.owl
 # Final LinkML-derived OWL at repo root (released with YAML)
 OUTPUT_OWL_LINKML := icd10who.owl
-# Release TTL assets at repo root (clear naming)
+# Release TTL/OWL assets at repo root
 RAW_TTL_RELEASE := icd10who.raw.ttl
 MIRROR_TTL_RELEASE := icd10who.mirror.ttl
+MIRROR_OWL_RELEASE := icd10who.mirror.owl
+DB_RELEASE := icd10who.db
 MIRROR_OWL  := $(TMP_DIR)/mirror-icd10who.owl
 RAW_TTL     := $(TMP_DIR)/icd10who_raw.ttl
 YAML_OUT    := icd10who.yaml
@@ -35,12 +41,40 @@ ONTOLOGY_IRI := https://github.com/monarch-initiative/icd10who/releases/latest/d
 URIBASE     := http://purl.obolibrary.org/obo
 TODAY       ?= $(shell date +%Y-%m-%d)
 
-.PHONY: all build build-release acquire clean dependencies verify
+# Release bundle (uploaded to GitHub Releases; not committed)
+MIRROR_SIGNATURE := $(REPORTS_DIR)/mirror_signature.tsv
+COMPONENT_SIGNATURE := $(REPORTS_DIR)/component_signature.tsv
+METRICS_JSON := $(REPORTS_DIR)/icd10who-metrics.json
+SOURCE_VERSION_TSV := $(REPORTS_DIR)/source-version.tsv
+SSSOM_TSV := $(MAPPINGS_DIR)/icd10who.sssom.tsv
+SOURCE_DOC := $(DOCS_SOURCES_DIR)/icd10who.md
+METRICS_DOC := $(DOCS_METRICS_DIR)/icd10who.md
+COMPONENT_JSON := $(TMP_DIR)/component-icd10who.json
+SEMSQL_OWL := $(TMP_DIR)/icd10who-semsql.owl
+
+RELEASE_ASSETS := \
+	$(YAML_OUT) \
+	$(OUTPUT_OWL_LINKML) \
+	$(RAW_TTL_RELEASE) \
+	$(MIRROR_TTL_RELEASE) \
+	$(MIRROR_OWL_RELEASE) \
+	$(DB_RELEASE) \
+	$(MIRROR_SIGNATURE) \
+	$(COMPONENT_SIGNATURE) \
+	$(METRICS_JSON) \
+	$(SOURCE_VERSION_TSV) \
+	$(SSSOM_TSV) \
+	$(SOURCE_DOC) \
+	$(METRICS_DOC)
+
+.PHONY: all build build-release acquire clean dependencies verify release-dirs
 
 all: build
 
-$(TMP_DIR):
-	mkdir -p $(TMP_DIR)
+$(TMP_DIR) $(REPORTS_DIR) $(MAPPINGS_DIR) $(DOCS_SOURCES_DIR) $(DOCS_METRICS_DIR):
+	mkdir -p $@
+
+release-dirs: $(TMP_DIR) $(REPORTS_DIR) $(MAPPINGS_DIR) $(DOCS_SOURCES_DIR) $(DOCS_METRICS_DIR)
 
 # ── Acquire: WHO API → Turtle ─────────────────────────────────────────────────
 $(RAW_TTL): | $(TMP_DIR)
@@ -77,7 +111,7 @@ $(OUTPUT_OWL): $(MIRROR_OWL) \
 build: $(OUTPUT_OWL)
 	@echo "Build complete: $(OUTPUT_OWL)"
 
-# ── Release TTL assets (clear provenance naming) ───────────────────────────────
+# ── Release TTL/OWL mirror assets ─────────────────────────────────────────────
 $(RAW_TTL_RELEASE): $(RAW_TTL)
 	cp $(RAW_TTL) $@
 	@echo "Built $@"
@@ -86,14 +120,12 @@ $(MIRROR_TTL_RELEASE): $(MIRROR_OWL)
 	$(ROBOT) convert -i $(MIRROR_OWL) -f ttl -o $@
 	@echo "Built $@"
 
-# Pin linkml-owl + main-branch linkml/linkml-runtime (comma-in-synonym workaround).
-dependencies:
-	$(UV) pip install linkml-owl==0.5.0 \
-		"linkml @ git+https://github.com/linkml/linkml.git@main#subdirectory=packages/linkml" \
-		"linkml-runtime @ git+https://github.com/linkml/linkml.git@main#subdirectory=packages/linkml_runtime"
+$(MIRROR_OWL_RELEASE): $(MIRROR_OWL) | release-dirs
+	$(ROBOT) convert -i $(MIRROR_OWL) -o $@
+	@echo "Built $@"
 
-# ── Release: build + LinkML transform + validate + verify + data2owl ───────────
-build-release: build $(RAW_TTL_RELEASE) $(MIRROR_TTL_RELEASE)
+# ── LinkML component at repo root ───────────────────────────────────────────────
+$(YAML_OUT) $(OUTPUT_OWL_LINKML): $(OUTPUT_OWL) | release-dirs
 	$(UV_RUN) python $(SCRIPTS_DIR)/transform.py \
 		--input $(OUTPUT_OWL) --schema $(SCHEMA) --output $(YAML_OUT)
 	$(UV_RUN) python -m linkml.validator.cli \
@@ -101,11 +133,89 @@ build-release: build $(RAW_TTL_RELEASE) $(MIRROR_TTL_RELEASE)
 	$(UV_RUN) python $(SCRIPTS_DIR)/verify.py --yaml $(YAML_OUT)
 	$(UV_RUN) python -m linkml_owl.dumpers.owl_dumper \
 		--schema $(SCHEMA) -o $(OUTPUT_OWL_LINKML) $(YAML_OUT)
-	@echo "Build complete: $(YAML_OUT), $(OUTPUT_OWL_LINKML), $(RAW_TTL_RELEASE), $(MIRROR_TTL_RELEASE) (release); $(OUTPUT_OWL) (ROBOT intermediate)"
+	@echo "Built $(YAML_OUT) and $(OUTPUT_OWL_LINKML)"
 
-verify:
+# ── semsql index (RDF/XML conversion required for linkml-owl functional syntax) ─
+$(SEMSQL_OWL): $(OUTPUT_OWL_LINKML) | $(TMP_DIR)
+	$(ROBOT) convert -i $(OUTPUT_OWL_LINKML) -o $@
+	@echo "Built $@"
+
+$(DB_RELEASE): $(SEMSQL_OWL) $(CONFIG_DIR)/prefixes.csv | release-dirs
+	@rm -f $(TMP_DIR)/icd10who-semsql.db .template.db .template.db.tmp $(TMP_DIR)/icd10who-semsql-relation-graph.tsv.gz
+	RUST_BACKTRACE=full semsql make $(TMP_DIR)/icd10who-semsql.db -P $(CONFIG_DIR)/prefixes.csv
+	@rm -f .template.db .template.db.tmp $(TMP_DIR)/icd10who-semsql-relation-graph.tsv.gz
+	@test -f $(TMP_DIR)/icd10who-semsql.db || (echo "Error: $(TMP_DIR)/icd10who-semsql.db not found" && exit 1)
+	mv $(TMP_DIR)/icd10who-semsql.db $(DB_RELEASE)
+	@echo "Built $@"
+
+# ── Signatures ──────────────────────────────────────────────────────────────────
+$(MIRROR_SIGNATURE): $(MIRROR_OWL_RELEASE) $(SPARQL_DIR)/classes.sparql | release-dirs
+	$(ROBOT) query -i $(MIRROR_OWL_RELEASE) --query $(SPARQL_DIR)/classes.sparql $@
+	(head -n 1 $@ && tail -n +2 $@ | sort) > $@-temp
+	mv $@-temp $@
+	@echo "Built $@"
+
+$(COMPONENT_SIGNATURE): $(OUTPUT_OWL_LINKML) $(SPARQL_DIR)/classes.sparql | release-dirs
+	$(ROBOT) query -i $(OUTPUT_OWL_LINKML) --query $(SPARQL_DIR)/classes.sparql $@
+	(head -n 1 $@ && tail -n +2 $@ | sort) > $@-temp
+	mv $@-temp $@
+	@echo "Built $@"
+
+# ── SSSOM xref export ───────────────────────────────────────────────────────────
+$(COMPONENT_JSON): $(OUTPUT_OWL_LINKML) | $(TMP_DIR)
+	$(ROBOT) convert -i $(OUTPUT_OWL_LINKML) -f json -o $@
+	@echo "Built $@"
+
+$(SSSOM_TSV): $(COMPONENT_JSON) $(CONFIG_DIR)/mondo.sssom.config.yml | release-dirs
+	sssom parse $(COMPONENT_JSON) -I obographs-json \
+		--prefix-map-mode metadata_only -m $(CONFIG_DIR)/mondo.sssom.config.yml -o $@
+	sssom sort $@ -o $@
+	@echo "Built $@"
+
+# ── Metrics and docs ────────────────────────────────────────────────────────────
+$(METRICS_JSON): $(OUTPUT_OWL_LINKML) | release-dirs
+	$(ROBOT) measure -i $(OUTPUT_OWL_LINKML) --format json --metrics extended -o $@
+	@echo "Built $@"
+
+$(METRICS_DOC): $(METRICS_JSON) $(CONFIG_DIR)/source_metrics.md.j2 | release-dirs
+	$(UV_RUN) python $(SCRIPTS_DIR)/render_template.py \
+		$(CONFIG_DIR)/source_metrics.md.j2 $(METRICS_JSON) $@
+	@echo "Built $@"
+
+$(SOURCE_DOC): $(METADATA_DIR)/icd10who-source.yml $(CONFIG_DIR)/source_documentation.md.j2 | release-dirs
+	$(UV_RUN) python $(SCRIPTS_DIR)/render_template.py \
+		$(CONFIG_DIR)/source_documentation.md.j2 $(METADATA_DIR)/icd10who-source.yml $@
+	@echo "Built $@"
+
+# ── Source version ──────────────────────────────────────────────────────────────
+$(SOURCE_VERSION_TSV): $(MIRROR_OWL_RELEASE) $(SPARQL_DIR)/get-source-version.sparql | release-dirs
+	@printf "source\tontology\tversionIRI\tversionInfo\n" > $@
+	@$(ROBOT) query -i $(MIRROR_OWL_RELEASE) -f tsv --query $(SPARQL_DIR)/get-source-version.sparql \
+		| tail -n +2 \
+		| awk 'BEGIN{FS="\t"; OFS="\t"} {print "icd10who", $$1, $$2, $$3}' >> $@
+	@echo "Built $@"
+
+# Pin linkml-owl + main-branch linkml/linkml-runtime (comma-in-synonym workaround).
+dependencies:
+	$(UV) pip install linkml-owl==0.5.0 \
+		"linkml @ git+https://github.com/linkml/linkml.git@main#subdirectory=packages/linkml" \
+		"linkml-runtime @ git+https://github.com/linkml/linkml.git@main#subdirectory=packages/linkml_runtime" \
+		semsql sssom
+
+verify: $(YAML_OUT)
 	$(UV_RUN) python $(SCRIPTS_DIR)/verify.py --yaml $(YAML_OUT)
 
+# ── Full release bundle ─────────────────────────────────────────────────────────
+build-release: release-dirs build $(RAW_TTL_RELEASE) $(MIRROR_TTL_RELEASE) \
+	$(YAML_OUT) $(OUTPUT_OWL_LINKML) \
+	$(MIRROR_OWL_RELEASE) $(DB_RELEASE) \
+	$(MIRROR_SIGNATURE) $(COMPONENT_SIGNATURE) \
+	$(SSSOM_TSV) $(METRICS_JSON) $(METRICS_DOC) $(SOURCE_DOC) $(SOURCE_VERSION_TSV)
+	@echo "Release bundle complete:"
+	@for f in $(RELEASE_ASSETS); do test -f $$f || (echo "Missing: $$f" && exit 1); done
+	@ls -la $(RELEASE_ASSETS)
+
 clean:
-	rm -f $(OUTPUT_OWL_LINKML) $(YAML_OUT) $(RAW_TTL_RELEASE) $(MIRROR_TTL_RELEASE)
-	rm -rf $(TMP_DIR)
+	rm -f $(OUTPUT_OWL_LINKML) $(YAML_OUT) \
+		$(RAW_TTL_RELEASE) $(MIRROR_TTL_RELEASE) $(MIRROR_OWL_RELEASE) $(DB_RELEASE)
+	rm -rf $(TMP_DIR) $(REPORTS_DIR) $(MAPPINGS_DIR) $(DOCS_SOURCES_DIR) $(DOCS_METRICS_DIR)

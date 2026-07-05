@@ -1,0 +1,11 @@
+curie_map:
+  ICD10WHO: https://icd.who.int/browse10/2019/en#/
+  ICD10WHO2010: http://apps.who.int/classifications/icd10/browse/2010/en#/
+  MONDO: http://purl.obolibrary.org/obo/MONDO_
+  skos: http://www.w3.org/2004/02/skos/core#
+  semapv: https://w3id.org/semapv/vocab/
+  oboInOwl: http://www.geneontology.org/formats/oboInOwl#
+  owl: http://www.w3.org/2002/07/owl#
+  rdf: http://www.w3.org/1999/02/22-rdf-syntax-ns#
+  rdfs: http://www.w3.org/2000/01/rdf-schema#
+  sssom: https://w3id.org/sssom/

@@ -61,6 +61,15 @@ jobs:
             icd10who.owl
             icd10who.raw.ttl
             icd10who.mirror.ttl
+            icd10who.mirror.owl
+            icd10who.db
+            reports/mirror_signature.tsv
+            reports/component_signature.tsv
+            reports/icd10who-metrics.json
+            reports/source-version.tsv
+            mappings/icd10who.sssom.tsv
+            docs/sources/icd10who.md
+            docs/metrics/icd10who.md
           generate_release_notes: true
           draft: false
         env:
