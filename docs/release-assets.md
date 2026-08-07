@@ -10,15 +10,15 @@ Each release publishes preprocessing outputs for [mondo-ingest](https://github.c
 | `icd10who.owl` | Preprocessed component OWL (mondo-ingest `components/icd10who.owl`) |
 | `icd10who.raw.ttl` | Raw WHO API mirror (Turtle) |
 | `icd10who.mirror.ttl` | Normalized mirror (Turtle) |
-| `icd10who.mirror.owl` | Normalized mirror (OWL/RDF-XML) |
+| `mirror-icd10who.owl` | Normalized mirror OWL/RDF-XML (mondo-ingest `tmp/mirror-icd10who.owl`) |
 | `icd10who.db` | semsql SQLite index over `icd10who.owl` |
 
 ## Reports and mappings
 
 | File | Purpose |
 |------|---------|
-| `reports/mirror_signature.tsv` | Class listing of mirror ontology (drift detection) |
-| `reports/component_signature.tsv` | Class listing of component ontology |
+| `reports/mirror_signature-icd10who.tsv` | Class listing of mirror ontology (drift detection) |
+| `reports/component_signature-icd10who.tsv` | Class listing of component ontology |
 | `reports/icd10who-metrics.json` | ROBOT extended metrics (JSON) |
 | `reports/source-version.tsv` | Ontology version IRI / versionInfo for this release |
 | `mappings/icd10who.sssom.tsv` | SSSOM export of xrefs embedded in the component |

@@ -61,10 +61,10 @@ jobs:
             icd10who.owl
             icd10who.raw.ttl
             icd10who.mirror.ttl
-            icd10who.mirror.owl
+            mirror-icd10who.owl
             icd10who.db
-            reports/mirror_signature.tsv
-            reports/component_signature.tsv
+            reports/mirror_signature-icd10who.tsv
+            reports/component_signature-icd10who.tsv
             reports/icd10who-metrics.json
             reports/source-version.tsv
             mappings/icd10who.sssom.tsv

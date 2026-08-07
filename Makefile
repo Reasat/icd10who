@@ -30,10 +30,10 @@ OUTPUT_OWL  := $(TMP_DIR)/transformed-icd10who.owl
 FUNCTIONAL_OWL := $(TMP_DIR)/icd10who.functional.owl
 # Released component OWL (RDF/XML) for mondo-ingest wget
 OUTPUT_OWL_LINKML := icd10who.owl
-# Release TTL/OWL assets at repo root
+# Release TTL/OWL mirror assets at repo root (names match mondo-ingest wget targets)
 RAW_TTL_RELEASE := icd10who.raw.ttl
 MIRROR_TTL_RELEASE := icd10who.mirror.ttl
-MIRROR_OWL_RELEASE := icd10who.mirror.owl
+MIRROR_OWL_RELEASE := mirror-icd10who.owl
 DB_RELEASE := icd10who.db
 MIRROR_OWL  := $(TMP_DIR)/mirror-icd10who.owl
 RAW_TTL     := $(TMP_DIR)/icd10who_raw.ttl
@@ -44,8 +44,9 @@ URIBASE     := http://purl.obolibrary.org/obo
 TODAY       ?= $(shell date +%Y-%m-%d)
 
 # Release bundle (uploaded to GitHub Releases; not committed)
-MIRROR_SIGNATURE := $(REPORTS_DIR)/mirror_signature.tsv
-COMPONENT_SIGNATURE := $(REPORTS_DIR)/component_signature.tsv
+# Signature basenames match mondo-ingest reports/*-icd10who.tsv ($(@F) wget)
+MIRROR_SIGNATURE := $(REPORTS_DIR)/mirror_signature-icd10who.tsv
+COMPONENT_SIGNATURE := $(REPORTS_DIR)/component_signature-icd10who.tsv
 METRICS_JSON := $(REPORTS_DIR)/icd10who-metrics.json
 SOURCE_VERSION_TSV := $(REPORTS_DIR)/source-version.tsv
 SSSOM_TSV := $(MAPPINGS_DIR)/icd10who.sssom.tsv
