@@ -1,0 +1,53 @@
+%%{init: {"flowchart": {"htmlLabels": false}} }%%
+flowchart TD
+  subgraph acquire_stage["1 — Acquire"]
+    WHO["WHO ICD-10 API"]
+    ACQ["make acquire<br/>scripts/acquire.py"]
+    RAW["tmp/icd10who_raw.ttl"]
+    WHO --> ACQ --> RAW
+  end
+
+  subgraph build_stage["2 — ROBOT preprocess"]
+    MIR["merge + odk:normalize"]
+    MIRROR["tmp/mirror-icd10who.owl"]
+    COMP["xref fix · exact synonym · property filter"]
+    TRANS["tmp/transformed-icd10who.owl<br/>(intermediate, not released)"]
+    RAW --> MIR --> MIRROR --> COMP --> TRANS
+  end
+
+  subgraph linkml_stage["3 — LinkML round-trip"]
+    XF["scripts/transform.py"]
+    YAML["icd10who.yaml"]
+    VAL["linkml-validate + verify.py"]
+    DUMP["linkml-owl owl_dumper"]
+    FUN["tmp/icd10who.functional.owl"]
+    CVT["ROBOT convert → RDF/XML"]
+    OWL["icd10who.owl<br/>(released component)"]
+    TRANS --> XF --> YAML --> VAL --> DUMP --> FUN --> CVT --> OWL
+  end
+
+  subgraph index_stage["4 — Index + side artefacts"]
+    SEM["semsql"]
+    DB["icd10who.db"]
+    SIG["mirror / component signatures"]
+    SSSOM["icd10who.sssom.tsv"]
+    MET["icd10who-metrics.json"]
+    MIRROR --> SIG
+    OWL --> SEM --> DB
+    OWL --> SIG
+    OWL --> SSSOM
+    OWL --> MET
+  end
+
+  subgraph release_stage["5 — Release + mondo-ingest"]
+    REL["GitHub Release<br/>make build-release"]
+    MI["mondo-ingest wget<br/>components/ · mappings/ · reports/"]
+    YAML --> REL
+    OWL --> REL
+    DB --> REL
+    SIG --> REL
+    SSSOM --> REL
+    MET --> REL
+    RAW -.->|"also: raw.ttl · mirror.ttl · mirror.owl"| REL
+    REL --> MI
+  end
