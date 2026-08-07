@@ -26,7 +26,9 @@ DOCS_SOURCES_DIR := docs/sources
 DOCS_METRICS_DIR := docs/metrics
 # ROBOT-processed intermediate (mondo-source-ingest: tmp/transformed-<source>.owl; not released)
 OUTPUT_OWL  := $(TMP_DIR)/transformed-icd10who.owl
-# Final LinkML-derived OWL at repo root (released with YAML)
+# linkml-owl dumps functional syntax; not released
+FUNCTIONAL_OWL := $(TMP_DIR)/icd10who.functional.owl
+# Released component OWL (RDF/XML) for mondo-ingest wget
 OUTPUT_OWL_LINKML := icd10who.owl
 # Release TTL/OWL assets at repo root
 RAW_TTL_RELEASE := icd10who.raw.ttl
@@ -50,6 +52,7 @@ SSSOM_TSV := $(MAPPINGS_DIR)/icd10who.sssom.tsv
 SOURCE_DOC := $(DOCS_SOURCES_DIR)/icd10who.md
 METRICS_DOC := $(DOCS_METRICS_DIR)/icd10who.md
 COMPONENT_JSON := $(TMP_DIR)/component-icd10who.json
+# semsql expects tmp/<stem>.owl next to tmp/<stem>.db
 SEMSQL_OWL := $(TMP_DIR)/icd10who-semsql.owl
 
 RELEASE_ASSETS := \
@@ -124,20 +127,26 @@ $(MIRROR_OWL_RELEASE): $(MIRROR_OWL) | release-dirs
 	$(ROBOT) convert -i $(MIRROR_OWL) -o $@
 	@echo "Built $@"
 
-# ── LinkML component at repo root ───────────────────────────────────────────────
-$(YAML_OUT) $(OUTPUT_OWL_LINKML): $(OUTPUT_OWL) | release-dirs
+# ── LinkML YAML + functional OWL (tmp), then RDF/XML release OWL ───────────────
+$(YAML_OUT) $(FUNCTIONAL_OWL): $(OUTPUT_OWL) | release-dirs
 	$(UV_RUN) python $(SCRIPTS_DIR)/transform.py \
 		--input $(OUTPUT_OWL) --schema $(SCHEMA) --output $(YAML_OUT)
 	$(UV_RUN) python -m linkml.validator.cli \
 		--schema $(SCHEMA) --target-class OntologyDocument $(YAML_OUT)
 	$(UV_RUN) python $(SCRIPTS_DIR)/verify.py --yaml $(YAML_OUT)
 	$(UV_RUN) python -m linkml_owl.dumpers.owl_dumper \
-		--schema $(SCHEMA) -o $(OUTPUT_OWL_LINKML) $(YAML_OUT)
-	@echo "Built $(YAML_OUT) and $(OUTPUT_OWL_LINKML)"
+		--schema $(SCHEMA) -o $(FUNCTIONAL_OWL) $(YAML_OUT)
+	@echo "Built $(YAML_OUT) and $(FUNCTIONAL_OWL)"
 
-# ── semsql index (RDF/XML conversion required for linkml-owl functional syntax) ─
+# RDF/XML for mondo-ingest / semsql (linkml-owl emits functional syntax)
+$(OUTPUT_OWL_LINKML): $(FUNCTIONAL_OWL)
+	$(ROBOT) convert -i $(FUNCTIONAL_OWL) -o $(TMP_DIR)/icd10who.rdfxml.owl
+	mv $(TMP_DIR)/icd10who.rdfxml.owl $@
+	@echo "Built $@"
+
+# ── semsql index (uses released RDF/XML OWL) ────────────────────────────────────
 $(SEMSQL_OWL): $(OUTPUT_OWL_LINKML) | $(TMP_DIR)
-	$(ROBOT) convert -i $(OUTPUT_OWL_LINKML) -o $@
+	cp $(OUTPUT_OWL_LINKML) $@
 	@echo "Built $@"
 
 $(DB_RELEASE): $(SEMSQL_OWL) $(CONFIG_DIR)/prefixes.csv | release-dirs
@@ -207,7 +216,7 @@ verify: $(YAML_OUT)
 
 # ── Full release bundle ─────────────────────────────────────────────────────────
 build-release: release-dirs build $(RAW_TTL_RELEASE) $(MIRROR_TTL_RELEASE) \
-	$(YAML_OUT) $(OUTPUT_OWL_LINKML) \
+	$(YAML_OUT) $(FUNCTIONAL_OWL) $(OUTPUT_OWL_LINKML) \
 	$(MIRROR_OWL_RELEASE) $(DB_RELEASE) \
 	$(MIRROR_SIGNATURE) $(COMPONENT_SIGNATURE) \
 	$(SSSOM_TSV) $(METRICS_JSON) $(METRICS_DOC) $(SOURCE_DOC) $(SOURCE_VERSION_TSV)
